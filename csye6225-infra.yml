@@ -26,6 +26,9 @@ Parameters:
   PublicRouteCidrBlock:
     Type: String
     Default: "0.0.0.0/0"
+  AmiId:
+    Type: String
+    Default: "ami-033b95fb8079dc481"
 Resources:
   VPC:
     Type: AWS::EC2::VPC
@@ -118,6 +121,65 @@ Resources:
        DestinationCidrBlock: !Ref PublicRouteCidrBlock
        GatewayId:
          Ref: InternetGateway
+  EC2SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+        GroupDescription: Allow http to client host
+        GroupName: application
+        VpcId:
+          Ref: VPC
+        SecurityGroupIngress:
+        - IpProtocol: tcp
+          Description: ssh
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          Description: ssh
+          FromPort: 22
+          ToPort: 22
+          CidrIpv6: ::/0
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIpv6: ::/0
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIpv6: ::/0
+        - IpProtocol: tcp
+          Description: go server
+          FromPort: 8080
+          ToPort: 8080
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          Description: go server
+          FromPort: 8080
+          ToPort: 8080
+          CidrIpv6: ::/0
+  EC2Instance: 
+    Type: AWS::EC2::Instance
+    Properties: 
+      ImageId: !Ref AmiId
+      InstanceType: t2.micro
+      SecurityGroupIds: [!Ref EC2SecurityGroup]
+      SubnetId:
+        Ref: Subnet1
+      BlockDeviceMappings: 
+      - DeviceName: "/dev/xvda"
+        Ebs: 
+          VolumeType: "gp2"
+          DeleteOnTermination: "true"
+          VolumeSize: "20"
+
 Outputs:
   VpcId:
     Description: The VPC ID
@@ -137,3 +199,9 @@ Outputs:
   RouteTableId:
     Description: The Route Table ID
     Value: !Ref RouteTable
+  EC2SecurityGroupId:
+    Description: The application security group ID
+    Value: !Ref EC2SecurityGroup
+  EC2InstanceId:
+    Description: The ec2 instance ID
+    Value: !Ref EC2Instance
