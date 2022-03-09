@@ -170,9 +170,13 @@ Resources:
     Properties: 
       ImageId: !Ref AmiId
       InstanceType: t2.micro
-      SecurityGroupIds: [!Ref EC2SecurityGroup]
-      SubnetId:
-        Ref: Subnet1
+      NetworkInterfaces: 
+      - AssociatePublicIpAddress: "true"
+        DeleteOnTermination: "true"
+        SubnetId:
+          Ref: Subnet1
+        DeviceIndex: "0"
+        GroupSet: [!Ref EC2SecurityGroup]
       BlockDeviceMappings: 
       - DeviceName: "/dev/xvda"
         Ebs: 
