@@ -155,16 +155,6 @@ Resources:
           FromPort: 443
           ToPort: 443
           CidrIpv6: ::/0
-        - IpProtocol: tcp
-          Description: go server
-          FromPort: 8080
-          ToPort: 8080
-          CidrIp: 0.0.0.0/0
-        - IpProtocol: tcp
-          Description: go server
-          FromPort: 8080
-          ToPort: 8080
-          CidrIpv6: ::/0
   EC2Instance: 
     Type: AWS::EC2::Instance
     Properties: 
