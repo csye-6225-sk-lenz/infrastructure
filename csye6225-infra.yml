@@ -38,6 +38,9 @@ Parameters:
   AmiId:
     Type: String
     Default: "ami-033b95fb8079dc481"
+  Environment:
+    Type: String
+    Default: "dev"
 Resources:
   VPC:
     Type: AWS::EC2::VPC
@@ -243,7 +246,9 @@ Resources:
           Ref: VPC
         SecurityGroupIngress:
         - IpProtocol: tcp
-          
+          FromPort: 3306
+          ToPort: 3306
+          SourceSecurityGroupId: !Ref EC2SecurityGroup
   EC2Instance: 
     Type: AWS::EC2::Instance
     Properties: 
@@ -262,7 +267,41 @@ Resources:
           VolumeType: "gp2"
           DeleteOnTermination: "true"
           VolumeSize: "20"
-
+  S3Bucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Delete
+    Properties: 
+      BucketName: !Join
+      - ""
+      - - !Select
+          - 4
+          - !Split
+            - "-"
+            - !Select
+              - 2
+              - !Split
+                - "/"
+                - !Ref AWS::StackId
+        - "."
+        - !Ref Environment
+        - ".olasunkanmi-olayinka.me"
+      AccessControl: Private
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+        - ServerSideEncryptionByDefault:
+            SSEAlgorithm: AES256
+      LifecycleConfiguration:
+        Rules:
+        - Id: MyRule
+          Status: Enabled
+          Transitions:
+            - TransitionInDays: 30
+              StorageClass: STANDARD_IA
 Outputs:
   VpcId:
     Description: The VPC ID
