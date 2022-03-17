@@ -41,6 +41,12 @@ Parameters:
   Environment:
     Type: String
     Default: "dev"
+  DBName:
+    Type: String
+    Default: "csye6225"
+  DBPassword:
+    Type: String
+    Default: "verybadpassword"
 Resources:
   VPC:
     Type: AWS::EC2::VPC
@@ -302,6 +308,39 @@ Resources:
           Transitions:
             - TransitionInDays: 30
               StorageClass: STANDARD_IA
+  RDSDBSubnetGroup:
+    Type: "AWS::RDS::DBSubnetGroup"
+    Properties:
+      DBSubnetGroupDescription: "Subnet Group for RDS DB instances"
+      DBSubnetGroupName: !Join
+      - "-"
+      - - !Ref DBName
+        - "subnet-group"
+      SubnetIds:
+      - !Ref RDSSubnet1
+      - !Ref RDSSubnet2
+      - !Ref RDSSubnet3
+  RDSDBParameterGroup:
+    Type: 'AWS::RDS::DBParameterGroup'
+    Properties:
+      Description: MySQL Parameter Group
+      Family: mysql8.0
+  RDSDBInstance:
+        Type: AWS::RDS::DBInstance
+        Properties:
+          DBParameterGroupName: !Ref RDSDBParameterGroup
+          Engine: MySQL
+          EngineVersion: 8.0.27
+          DBInstanceClass: db.t3.micro
+          AllocatedStorage: "5"
+          MultiAZ: "false"
+          DBInstanceIdentifier: !Ref DBName
+          MasterUsername: !Ref DBName
+          MasterUserPassword: !Ref DBPassword
+          DBSubnetGroupName: !Ref RDSDBSubnetGroup
+          PubliclyAccessible: "false"
+          DBName: !Ref DBName
+          VPCSecurityGroups: [!Ref RDSSecurityGroup]
 Outputs:
   VpcId:
     Description: The VPC ID
