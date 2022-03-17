@@ -347,18 +347,16 @@ Resources:
       PolicyDocument:
         Version: "2012-10-17"
         Statement:
-          -
-            Effect: Allow
+          - Effect: Allow
             Action:
-              - "s3:PutObject"
-              - "s3:GetObject"
-              - "s3:DeleteObject"
+            - "s3:PutObject"
+            - "s3:GetObject"
+            - "s3:DeleteObject"
             Resource:
-              - !Sub "arn:aws:s3:::${S3Bucket}"
-              - !Sub "arn:aws:s3:::${S3Bucket}/*"
+            - !Sub "arn:aws:s3:::${S3Bucket}"
+            - !Sub "arn:aws:s3:::${S3Bucket}/*"
       Roles:
-        -
-          !Ref EC2S3IAMRole
+      - !Ref EC2S3IAMRole
   EC2S3IAMRole:
     Type: AWS::IAM::Role
     Properties:
@@ -366,13 +364,12 @@ Resources:
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:
-          -
-            Effect: Allow
-            Principal:
-              Service:
-                - ec2.amazonaws.com
-            Action:
-              - sts:AssumeRole
+        - Effect: Allow
+          Principal:
+            Service:
+            - ec2.amazonaws.com
+          Action:
+          - sts:AssumeRole
       Path: /
   EC2InstanceProfile:
     Type: AWS::IAM::InstanceProfile
@@ -380,7 +377,7 @@ Resources:
       InstanceProfileName: ec2-instance-profile
       Path: /
       Roles: 
-       - !Ref EC2S3IAMRole
+      - !Ref EC2S3IAMRole
 
 Outputs:
   VpcId:
