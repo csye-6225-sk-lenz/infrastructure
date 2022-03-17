@@ -14,6 +14,15 @@ Parameters:
   Subnet3CidrBlock:
     Type: String
     Default: "10.1.3.0/24"
+  RDSSubnet1CidrBlock:
+    Type: String
+    Default: "10.1.4.0/24"
+  RDSSubnet2CidrBlock:
+    Type: String
+    Default: "10.1.5.0/24"
+  RDSSubnet3CidrBlock:
+    Type: String
+    Default: "10.1.6.0/24"
   AvailabilityZone1:
     Type: String
     Default: "us-east-1a"
@@ -70,6 +79,39 @@ Resources:
       Tags:
       - Key: Name
         Value: !Ref AWS::StackName
+  RDSSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId:
+        Ref: VPC
+      MapPublicIpOnLaunch: "false"
+      CidrBlock: !Ref RDSSubnet1CidrBlock
+      AvailabilityZone: !Ref AvailabilityZone1
+      Tags:
+      - Key: Name
+        Value: !Ref AWS::StackName
+  RDSSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId:
+        Ref: VPC
+      MapPublicIpOnLaunch: "false"
+      CidrBlock: !Ref RDSSubnet2CidrBlock
+      AvailabilityZone: !Ref AvailabilityZone2
+      Tags:
+      - Key: Name
+        Value: !Ref AWS::StackName
+  RDSSubnet3:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId:
+        Ref: VPC
+      MapPublicIpOnLaunch: "false"
+      CidrBlock: !Ref RDSSubnet3CidrBlock
+      AvailabilityZone: !Ref AvailabilityZone3
+      Tags:
+      - Key: Name
+        Value: !Ref AWS::StackName
   InternetGateway:
     Type: AWS::EC2::InternetGateway
     Properties:
@@ -121,6 +163,35 @@ Resources:
        DestinationCidrBlock: !Ref PublicRouteCidrBlock
        GatewayId:
          Ref: InternetGateway
+  PrivateRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId:  
+        Ref: VPC
+      Tags:
+      - Key: Name
+        Value: !Ref AWS::StackName
+  RDSSubnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId:
+        Ref: RDSSubnet1
+      RouteTableId:
+        Ref: PrivateRouteTable
+  RDSSubnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId:
+        Ref: RDSSubnet2
+      RouteTableId:
+        Ref: PrivateRouteTable
+  RDSSubnet3RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId:
+        Ref: RDSSubnet3
+      RouteTableId:
+        Ref: PrivateRouteTable
   EC2SecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
@@ -155,6 +226,24 @@ Resources:
           FromPort: 443
           ToPort: 443
           CidrIpv6: ::/0
+        - IpProtocol: tcp
+          FromPort: 8080
+          ToPort: 8080
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 8080
+          ToPort: 8080
+          CidrIpv6: ::/0
+  RDSSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+        GroupDescription: Security group for RDS instances
+        GroupName: database
+        VpcId:
+          Ref: VPC
+        SecurityGroupIngress:
+        - IpProtocol: tcp
+          
   EC2Instance: 
     Type: AWS::EC2::Instance
     Properties: 
