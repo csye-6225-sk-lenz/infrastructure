@@ -260,6 +260,7 @@ Resources:
     Properties: 
       ImageId: !Ref AmiId
       InstanceType: t2.micro
+      IamInstanceProfile: !Ref EC2InstanceProfile
       NetworkInterfaces: 
       - AssociatePublicIpAddress: "true"
         DeleteOnTermination: "true"
@@ -308,39 +309,79 @@ Resources:
           Transitions:
             - TransitionInDays: 30
               StorageClass: STANDARD_IA
-  RDSDBSubnetGroup:
-    Type: "AWS::RDS::DBSubnetGroup"
+  # RDSDBSubnetGroup:
+  #   Type: "AWS::RDS::DBSubnetGroup"
+  #   Properties:
+  #     DBSubnetGroupDescription: "Subnet Group for RDS DB instances"
+  #     DBSubnetGroupName: !Sub "${DBName}-subnet-group"
+  #     SubnetIds:
+  #     - !Ref RDSSubnet1
+  #     - !Ref RDSSubnet2
+  #     - !Ref RDSSubnet3
+  # RDSDBParameterGroup:
+  #   Type: 'AWS::RDS::DBParameterGroup'
+  #   Properties:
+  #     Description: MySQL Parameter Group
+  #     Family: mysql8.0
+  # RDSDBInstance:
+  #       Type: AWS::RDS::DBInstance
+  #       Properties:
+  #         DBParameterGroupName: !Ref RDSDBParameterGroup
+  #         Engine: MySQL
+  #         EngineVersion: 8.0.27
+  #         DBInstanceClass: db.t3.micro
+  #         AllocatedStorage: "20"
+  #         StorageType: "gp2"
+  #         MultiAZ: "false"
+  #         DBInstanceIdentifier: !Ref DBName
+  #         MasterUsername: !Ref DBName
+  #         MasterUserPassword: !Ref DBPassword
+  #         DBSubnetGroupName: !Ref RDSDBSubnetGroup
+  #         PubliclyAccessible: "false"
+  #         DBName: !Ref DBName
+  #         VPCSecurityGroups: [!Ref RDSSecurityGroup]
+  EC2S3Policy:
+    Type: 'AWS::IAM::Policy'
     Properties:
-      DBSubnetGroupDescription: "Subnet Group for RDS DB instances"
-      DBSubnetGroupName: !Join
-      - "-"
-      - - !Ref DBName
-        - "subnet-group"
-      SubnetIds:
-      - !Ref RDSSubnet1
-      - !Ref RDSSubnet2
-      - !Ref RDSSubnet3
-  RDSDBParameterGroup:
-    Type: 'AWS::RDS::DBParameterGroup'
+      PolicyName: "WebAppS3"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          -
+            Effect: Allow
+            Action:
+              - "s3:PutObject"
+              - "s3:GetObject"
+              - "s3:DeleteObject"
+            Resource:
+              - !Sub "arn:aws:s3:::${S3Bucket}"
+              - !Sub "arn:aws:s3:::${S3Bucket}/*"
+      Roles:
+        -
+          !Ref EC2S3IAMRole
+  EC2S3IAMRole:
+    Type: AWS::IAM::Role
     Properties:
-      Description: MySQL Parameter Group
-      Family: mysql8.0
-  RDSDBInstance:
-        Type: AWS::RDS::DBInstance
-        Properties:
-          DBParameterGroupName: !Ref RDSDBParameterGroup
-          Engine: MySQL
-          EngineVersion: 8.0.27
-          DBInstanceClass: db.t3.micro
-          AllocatedStorage: "5"
-          MultiAZ: "false"
-          DBInstanceIdentifier: !Ref DBName
-          MasterUsername: !Ref DBName
-          MasterUserPassword: !Ref DBPassword
-          DBSubnetGroupName: !Ref RDSDBSubnetGroup
-          PubliclyAccessible: "false"
-          DBName: !Ref DBName
-          VPCSecurityGroups: [!Ref RDSSecurityGroup]
+      RoleName: "EC2-CSYE6225"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          -
+            Effect: Allow
+            Principal:
+              Service:
+                - ec2.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Path: /
+  EC2InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      InstanceProfileName: ec2-instance-profile
+      Path: /
+      Roles: 
+       - !Ref EC2S3IAMRole
+
 Outputs:
   VpcId:
     Description: The VPC ID
