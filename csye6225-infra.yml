@@ -286,7 +286,7 @@ Resources:
             echo "DB_HOST=${RDSDBInstance.Endpoint.Address}" >> /home/ec2-user/webservice/.env
             echo "DB_NAME=${DBName}" >> /home/ec2-user/webservice/.env
             echo "S3_BUCKETNAME=${S3BUCKET}" >> /home/ec2-user/webservice/.env
-            sudo systemctl restart gowebapp
+            systemctl restart gowebapp
   S3BUCKET:
     Type: AWS::S3::Bucket
     DeletionPolicy: Delete
