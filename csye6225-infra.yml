@@ -274,7 +274,15 @@ Resources:
           VolumeType: "gp2"
           DeleteOnTermination: "true"
           VolumeSize: "20"
-  S3Bucket:
+      UserData:
+        Fn::Base64: 
+          !Sub |
+            #!/bin/bash
+            yum update -y
+            mkdir -p /home/ec2-user/webservice
+            echo "DB_PORT=3306\nDB_USER=${DBName}\nDB_PASS=${DBPassword}\nDB_HOST=${RDSDBInstance}\nDB_NAME=${DBName}\nS3_BUCKETNAME=${S3BUCKET}" >| /home/ec2-user/webservice/.env
+            sudo systemctl restart gowebapp
+  S3BUCKET:
     Type: AWS::S3::Bucket
     DeletionPolicy: Delete
     Properties: 
@@ -309,37 +317,37 @@ Resources:
           Transitions:
             - TransitionInDays: 30
               StorageClass: STANDARD_IA
-  # RDSDBSubnetGroup:
-  #   Type: "AWS::RDS::DBSubnetGroup"
-  #   Properties:
-  #     DBSubnetGroupDescription: "Subnet Group for RDS DB instances"
-  #     DBSubnetGroupName: !Sub "${DBName}-subnet-group"
-  #     SubnetIds:
-  #     - !Ref RDSSubnet1
-  #     - !Ref RDSSubnet2
-  #     - !Ref RDSSubnet3
-  # RDSDBParameterGroup:
-  #   Type: 'AWS::RDS::DBParameterGroup'
-  #   Properties:
-  #     Description: MySQL Parameter Group
-  #     Family: mysql8.0
-  # RDSDBInstance:
-  #       Type: AWS::RDS::DBInstance
-  #       Properties:
-  #         DBParameterGroupName: !Ref RDSDBParameterGroup
-  #         Engine: MySQL
-  #         EngineVersion: 8.0.27
-  #         DBInstanceClass: db.t3.micro
-  #         AllocatedStorage: "20"
-  #         StorageType: "gp2"
-  #         MultiAZ: "false"
-  #         DBInstanceIdentifier: !Ref DBName
-  #         MasterUsername: !Ref DBName
-  #         MasterUserPassword: !Ref DBPassword
-  #         DBSubnetGroupName: !Ref RDSDBSubnetGroup
-  #         PubliclyAccessible: "false"
-  #         DBName: !Ref DBName
-  #         VPCSecurityGroups: [!Ref RDSSecurityGroup]
+  RDSDBSubnetGroup:
+    Type: "AWS::RDS::DBSubnetGroup"
+    Properties:
+      DBSubnetGroupDescription: "Subnet Group for RDS DB instances"
+      DBSubnetGroupName: !Sub "${DBName}-subnet-group"
+      SubnetIds:
+      - !Ref RDSSubnet1
+      - !Ref RDSSubnet2
+      - !Ref RDSSubnet3
+  RDSDBParameterGroup:
+    Type: 'AWS::RDS::DBParameterGroup'
+    Properties:
+      Description: MySQL Parameter Group
+      Family: mysql8.0
+  RDSDBInstance:
+        Type: AWS::RDS::DBInstance
+        Properties:
+          DBParameterGroupName: !Ref RDSDBParameterGroup
+          Engine: MySQL
+          EngineVersion: 8.0.27
+          DBInstanceClass: db.t3.micro
+          AllocatedStorage: "20"
+          StorageType: "gp2"
+          MultiAZ: "false"
+          DBInstanceIdentifier: !Ref DBName
+          MasterUsername: !Ref DBName
+          MasterUserPassword: !Ref DBPassword
+          DBSubnetGroupName: !Ref RDSDBSubnetGroup
+          PubliclyAccessible: "false"
+          DBName: !Ref DBName
+          VPCSecurityGroups: [!Ref RDSSecurityGroup]
   EC2S3Policy:
     Type: 'AWS::IAM::Policy'
     Properties:
@@ -353,8 +361,8 @@ Resources:
             - "s3:GetObject"
             - "s3:DeleteObject"
             Resource:
-            - !Sub "arn:aws:s3:::${S3Bucket}"
-            - !Sub "arn:aws:s3:::${S3Bucket}/*"
+            - !Sub "arn:aws:s3:::${S3BUCKET}"
+            - !Sub "arn:aws:s3:::${S3BUCKET}/*"
       Roles:
       - !Ref EC2S3IAMRole
   EC2S3IAMRole:
