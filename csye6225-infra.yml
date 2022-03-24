@@ -14,6 +14,15 @@ Parameters:
   Subnet3CidrBlock:
     Type: String
     Default: "10.1.3.0/24"
+  RDSSubnet1CidrBlock:
+    Type: String
+    Default: "10.1.4.0/24"
+  RDSSubnet2CidrBlock:
+    Type: String
+    Default: "10.1.5.0/24"
+  RDSSubnet3CidrBlock:
+    Type: String
+    Default: "10.1.6.0/24"
   AvailabilityZone1:
     Type: String
     Default: "us-east-1a"
@@ -29,6 +38,15 @@ Parameters:
   AmiId:
     Type: String
     Default: "ami-033b95fb8079dc481"
+  Environment:
+    Type: String
+    Default: "dev"
+  DBName:
+    Type: String
+    Default: "csye6225"
+  DBPassword:
+    Type: String
+    Default: "verybadpassword"
 Resources:
   VPC:
     Type: AWS::EC2::VPC
@@ -66,6 +84,39 @@ Resources:
       VpcId:
         Ref: VPC
       CidrBlock: !Ref Subnet3CidrBlock
+      AvailabilityZone: !Ref AvailabilityZone3
+      Tags:
+      - Key: Name
+        Value: !Ref AWS::StackName
+  RDSSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId:
+        Ref: VPC
+      MapPublicIpOnLaunch: "false"
+      CidrBlock: !Ref RDSSubnet1CidrBlock
+      AvailabilityZone: !Ref AvailabilityZone1
+      Tags:
+      - Key: Name
+        Value: !Ref AWS::StackName
+  RDSSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId:
+        Ref: VPC
+      MapPublicIpOnLaunch: "false"
+      CidrBlock: !Ref RDSSubnet2CidrBlock
+      AvailabilityZone: !Ref AvailabilityZone2
+      Tags:
+      - Key: Name
+        Value: !Ref AWS::StackName
+  RDSSubnet3:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId:
+        Ref: VPC
+      MapPublicIpOnLaunch: "false"
+      CidrBlock: !Ref RDSSubnet3CidrBlock
       AvailabilityZone: !Ref AvailabilityZone3
       Tags:
       - Key: Name
@@ -121,6 +172,35 @@ Resources:
        DestinationCidrBlock: !Ref PublicRouteCidrBlock
        GatewayId:
          Ref: InternetGateway
+  PrivateRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId:  
+        Ref: VPC
+      Tags:
+      - Key: Name
+        Value: !Ref AWS::StackName
+  RDSSubnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId:
+        Ref: RDSSubnet1
+      RouteTableId:
+        Ref: PrivateRouteTable
+  RDSSubnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId:
+        Ref: RDSSubnet2
+      RouteTableId:
+        Ref: PrivateRouteTable
+  RDSSubnet3RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId:
+        Ref: RDSSubnet3
+      RouteTableId:
+        Ref: PrivateRouteTable
   EC2SecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
@@ -156,20 +236,31 @@ Resources:
           ToPort: 443
           CidrIpv6: ::/0
         - IpProtocol: tcp
-          Description: go server
           FromPort: 8080
           ToPort: 8080
           CidrIp: 0.0.0.0/0
         - IpProtocol: tcp
-          Description: go server
           FromPort: 8080
           ToPort: 8080
           CidrIpv6: ::/0
+  RDSSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+        GroupDescription: Security group for RDS instances
+        GroupName: database
+        VpcId:
+          Ref: VPC
+        SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 3306
+          ToPort: 3306
+          SourceSecurityGroupId: !Ref EC2SecurityGroup
   EC2Instance: 
     Type: AWS::EC2::Instance
     Properties: 
       ImageId: !Ref AmiId
       InstanceType: t2.micro
+      IamInstanceProfile: !Ref EC2InstanceProfile
       NetworkInterfaces: 
       - AssociatePublicIpAddress: "true"
         DeleteOnTermination: "true"
@@ -183,6 +274,123 @@ Resources:
           VolumeType: "gp2"
           DeleteOnTermination: "true"
           VolumeSize: "20"
+      UserData:
+        Fn::Base64: 
+          !Sub |
+            #!/bin/bash
+            yum update -y
+            mkdir -p /home/ec2-user/webservice
+            echo "DB_PORT=${RDSDBInstance.Endpoint.Port}" >| /home/ec2-user/webservice/.env
+            echo "DB_USER=${DBName}" >> /home/ec2-user/webservice/.env
+            echo "DB_PASS=${DBPassword}" >> /home/ec2-user/webservice/.env
+            echo "DB_HOST=${RDSDBInstance.Endpoint.Address}" >> /home/ec2-user/webservice/.env
+            echo "DB_NAME=${DBName}" >> /home/ec2-user/webservice/.env
+            echo "S3_BUCKETNAME=${S3BUCKET}" >> /home/ec2-user/webservice/.env
+            systemctl restart gowebapp
+  S3BUCKET:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Delete
+    Properties: 
+      BucketName: !Join
+      - ""
+      - - !Select
+          - 4
+          - !Split
+            - "-"
+            - !Select
+              - 2
+              - !Split
+                - "/"
+                - !Ref AWS::StackId
+        - "."
+        - !Ref Environment
+        - ".olasunkanmi-olayinka.me"
+      AccessControl: Private
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+        - ServerSideEncryptionByDefault:
+            SSEAlgorithm: AES256
+      LifecycleConfiguration:
+        Rules:
+        - Id: MyRule
+          Status: Enabled
+          Transitions:
+            - TransitionInDays: 30
+              StorageClass: STANDARD_IA
+  RDSDBSubnetGroup:
+    Type: "AWS::RDS::DBSubnetGroup"
+    Properties:
+      DBSubnetGroupDescription: "Subnet Group for RDS DB instances"
+      DBSubnetGroupName: !Sub "${DBName}-subnet-group"
+      SubnetIds:
+      - !Ref RDSSubnet1
+      - !Ref RDSSubnet2
+      - !Ref RDSSubnet3
+  RDSDBParameterGroup:
+    Type: 'AWS::RDS::DBParameterGroup'
+    Properties:
+      Description: MySQL Parameter Group
+      Family: mysql8.0
+  RDSDBInstance:
+        Type: AWS::RDS::DBInstance
+        Properties:
+          DBParameterGroupName: !Ref RDSDBParameterGroup
+          Engine: MySQL
+          EngineVersion: 8.0.27
+          DBInstanceClass: db.t3.micro
+          AllocatedStorage: "20"
+          StorageType: "gp2"
+          MultiAZ: "false"
+          DBInstanceIdentifier: !Ref DBName
+          MasterUsername: !Ref DBName
+          MasterUserPassword: !Ref DBPassword
+          DBSubnetGroupName: !Ref RDSDBSubnetGroup
+          PubliclyAccessible: "false"
+          DBName: !Ref DBName
+          VPCSecurityGroups: [!Ref RDSSecurityGroup]
+  EC2S3Policy:
+    Type: 'AWS::IAM::Policy'
+    Properties:
+      PolicyName: "WebAppS3"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+            - "s3:PutObject"
+            - "s3:GetObject"
+            - "s3:DeleteObject"
+            Resource:
+            - !Sub "arn:aws:s3:::${S3BUCKET}"
+            - !Sub "arn:aws:s3:::${S3BUCKET}/*"
+      Roles:
+      - !Ref EC2S3IAMRole
+  EC2S3IAMRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: "EC2-CSYE6225"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service:
+            - ec2.amazonaws.com
+          Action:
+          - sts:AssumeRole
+      Path: /
+  EC2InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      InstanceProfileName: ec2-instance-profile
+      Path: /
+      Roles: 
+      - !Ref EC2S3IAMRole
 
 Outputs:
   VpcId:
