@@ -244,7 +244,6 @@ Resources:
           FromPort: 3306
           ToPort: 3306
           SourceSecurityGroupId: !Ref EC2SecurityGroup
-
   LBSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
@@ -269,7 +268,6 @@ Resources:
           FromPort: 443
           ToPort: 443
           CidrIpv6: ::/0
-  
   ASGLaunchTemplate:
     Type: AWS::EC2::LaunchTemplate
     Properties:
@@ -288,7 +286,7 @@ Resources:
         BlockDeviceMappings:
         - DeviceName: /dev/xvda
           Ebs:
-            VolumeSize: 20
+            VolumeSize: 8
             VolumeType: "gp2"
             DeleteOnTermination: true
         UserData:
@@ -304,7 +302,6 @@ Resources:
               echo "DB_NAME=${DBName}" >> /home/ec2-user/webservice/.env
               echo "S3_BUCKETNAME=${S3BUCKET}" >> /home/ec2-user/webservice/.env
               systemctl restart gowebapp
-
   ASGWebApp:
     Type: AWS::AutoScaling::AutoScalingGroup
     Properties:
@@ -345,7 +342,7 @@ Resources:
       TargetTrackingConfiguration:
         PredefinedMetricSpecification:
           PredefinedMetricType: ASGAverageCPUUtilization
-        TargetValue: 5.0
+        TargetValue: 3.0
 
   # ASGCPUScaleInPolicy:
   #   Type: AWS::AutoScaling::ScalingPolicy
@@ -379,7 +376,6 @@ Resources:
         - Key: Name
           Value: !Sub ${AWS::StackName}-load-balancer
       Type: application
-
   LoadBalancerTargetGroup:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
     Properties:
@@ -402,7 +398,6 @@ Resources:
       TargetType: instance
       UnhealthyThresholdCount: 2
       VpcId: !Ref VPC
-  
   LoadBalancerListener:
     Type: AWS::ElasticLoadBalancingV2::Listener
     Properties:
@@ -412,7 +407,6 @@ Resources:
       LoadBalancerArn: !Ref LoadBalancer
       Port: 80
       Protocol: HTTP
-
   DNSRecord:
     Type: AWS::Route53::RecordSet
     Properties:
@@ -423,39 +417,6 @@ Resources:
       AliasTarget:
         DNSName: !GetAtt LoadBalancer.DNSName
         HostedZoneId: !GetAtt LoadBalancer.CanonicalHostedZoneID
-
-  # EC2Instance: 
-  #   Type: AWS::EC2::Instance
-  #   Properties: 
-  #     ImageId: !Ref AmiId
-  #     InstanceType: t2.micro
-  #     IamInstanceProfile: !Ref EC2InstanceProfile
-  #     NetworkInterfaces: 
-  #     - AssociatePublicIpAddress: "true"
-  #       DeleteOnTermination: "true"
-  #       SubnetId:
-  #         Ref: Subnet1
-  #       DeviceIndex: "0"
-  #       GroupSet: [!Ref EC2SecurityGroup]
-  #     BlockDeviceMappings: 
-  #     - DeviceName: "/dev/xvda"
-  #       Ebs: 
-  #         VolumeType: "gp2"
-  #         DeleteOnTermination: "true"
-  #         VolumeSize: "20"
-  #     UserData:
-  #       Fn::Base64: 
-  #         !Sub |
-  #           #!/bin/bash
-  #           yum update -y
-  #           mkdir -p /home/ec2-user/webservice
-  #           echo "DB_PORT=${RDSDBInstance.Endpoint.Port}" >| /home/ec2-user/webservice/.env
-  #           echo "DB_USER=${DBName}" >> /home/ec2-user/webservice/.env
-  #           echo "DB_PASS=${DBPassword}" >> /home/ec2-user/webservice/.env
-  #           echo "DB_HOST=${RDSDBInstance.Endpoint.Address}" >> /home/ec2-user/webservice/.env
-  #           echo "DB_NAME=${DBName}" >> /home/ec2-user/webservice/.env
-  #           echo "S3_BUCKETNAME=${S3BUCKET}" >> /home/ec2-user/webservice/.env
-  #           systemctl restart gowebapp
   S3BUCKET:
     Type: AWS::S3::Bucket
     DeletionPolicy: Delete
@@ -583,3 +544,36 @@ Outputs:
   EC2SecurityGroupId:
     Description: The application security group ID
     Value: !Ref EC2SecurityGroup
+
+  # EC2Instance: 
+  #   Type: AWS::EC2::Instance
+  #   Properties: 
+  #     ImageId: !Ref AmiId
+  #     InstanceType: t2.micro
+  #     IamInstanceProfile: !Ref EC2InstanceProfile
+  #     NetworkInterfaces: 
+  #     - AssociatePublicIpAddress: "true"
+  #       DeleteOnTermination: "true"
+  #       SubnetId:
+  #         Ref: Subnet1
+  #       DeviceIndex: "0"
+  #       GroupSet: [!Ref EC2SecurityGroup]
+  #     BlockDeviceMappings: 
+  #     - DeviceName: "/dev/xvda"
+  #       Ebs: 
+  #         VolumeType: "gp2"
+  #         DeleteOnTermination: "true"
+  #         VolumeSize: "20"
+  #     UserData:
+  #       Fn::Base64: 
+  #         !Sub |
+  #           #!/bin/bash
+  #           yum update -y
+  #           mkdir -p /home/ec2-user/webservice
+  #           echo "DB_PORT=${RDSDBInstance.Endpoint.Port}" >| /home/ec2-user/webservice/.env
+  #           echo "DB_USER=${DBName}" >> /home/ec2-user/webservice/.env
+  #           echo "DB_PASS=${DBPassword}" >> /home/ec2-user/webservice/.env
+  #           echo "DB_HOST=${RDSDBInstance.Endpoint.Address}" >> /home/ec2-user/webservice/.env
+  #           echo "DB_NAME=${DBName}" >> /home/ec2-user/webservice/.env
+  #           echo "S3_BUCKETNAME=${S3BUCKET}" >> /home/ec2-user/webservice/.env
+  #           systemctl restart gowebapp
