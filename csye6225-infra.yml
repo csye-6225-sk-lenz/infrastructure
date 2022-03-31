@@ -37,7 +37,8 @@ Parameters:
     Default: "0.0.0.0/0"
   AmiId:
     Type: String
-    Default: "ami-033b95fb8079dc481"
+    # Default: "ami-033b95fb8079dc481"
+    Default: "ami-0288217a58a0f17c2"
   Environment:
     Type: String
     Default: "dev"
@@ -47,6 +48,10 @@ Parameters:
   DBPassword:
     Type: String
     Default: "verybadpassword"
+  InstanceKeyName:
+    Type: String
+    Default: "csye6225"
+  
 Resources:
   VPC:
     Type: AWS::EC2::VPC
@@ -213,36 +218,20 @@ Resources:
           Description: ssh
           FromPort: 22
           ToPort: 22
-          CidrIp: 0.0.0.0/0
+          SourceSecurityGroupId: !Ref LBSecurityGroup
         - IpProtocol: tcp
           Description: ssh
           FromPort: 22
           ToPort: 22
-          CidrIpv6: ::/0
-        - IpProtocol: tcp
-          FromPort: 80
-          ToPort: 80
-          CidrIp: 0.0.0.0/0
-        - IpProtocol: tcp
-          FromPort: 80
-          ToPort: 80
-          CidrIpv6: ::/0
-        - IpProtocol: tcp
-          FromPort: 443
-          ToPort: 443
-          CidrIp: 0.0.0.0/0
-        - IpProtocol: tcp
-          FromPort: 443
-          ToPort: 443
-          CidrIpv6: ::/0
+          SourceSecurityGroupId: !Ref LBSecurityGroup
         - IpProtocol: tcp
           FromPort: 8080
           ToPort: 8080
-          CidrIp: 0.0.0.0/0
+          SourceSecurityGroupId: !Ref LBSecurityGroup
         - IpProtocol: tcp
           FromPort: 8080
           ToPort: 8080
-          CidrIpv6: ::/0
+          SourceSecurityGroupId: !Ref LBSecurityGroup
   RDSSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
@@ -255,38 +244,218 @@ Resources:
           FromPort: 3306
           ToPort: 3306
           SourceSecurityGroupId: !Ref EC2SecurityGroup
-  EC2Instance: 
-    Type: AWS::EC2::Instance
-    Properties: 
-      ImageId: !Ref AmiId
-      InstanceType: t2.micro
-      IamInstanceProfile: !Ref EC2InstanceProfile
-      NetworkInterfaces: 
-      - AssociatePublicIpAddress: "true"
-        DeleteOnTermination: "true"
-        SubnetId:
-          Ref: Subnet1
-        DeviceIndex: "0"
-        GroupSet: [!Ref EC2SecurityGroup]
-      BlockDeviceMappings: 
-      - DeviceName: "/dev/xvda"
-        Ebs: 
-          VolumeType: "gp2"
+
+  LBSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+        GroupDescription: Security group for Load balancer to access the web
+        GroupName: load balancer
+        VpcId:
+          Ref: VPC
+        SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIpv6: ::/0
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIpv6: ::/0
+  
+  ASGLaunchTemplate:
+    Type: AWS::EC2::LaunchTemplate
+    Properties:
+      LaunchTemplateName: "asg_launch_config"
+      LaunchTemplateData:
+        ImageId: !Ref AmiId
+        InstanceType: t2.micro
+        KeyName: !Ref InstanceKeyName
+        IamInstanceProfile:
+          Arn: !GetAtt EC2InstanceProfile.Arn
+        NetworkInterfaces: 
+        - AssociatePublicIpAddress: "true"
+          Groups: [!Ref EC2SecurityGroup]
           DeleteOnTermination: "true"
-          VolumeSize: "20"
-      UserData:
-        Fn::Base64: 
-          !Sub |
-            #!/bin/bash
-            yum update -y
-            mkdir -p /home/ec2-user/webservice
-            echo "DB_PORT=${RDSDBInstance.Endpoint.Port}" >| /home/ec2-user/webservice/.env
-            echo "DB_USER=${DBName}" >> /home/ec2-user/webservice/.env
-            echo "DB_PASS=${DBPassword}" >> /home/ec2-user/webservice/.env
-            echo "DB_HOST=${RDSDBInstance.Endpoint.Address}" >> /home/ec2-user/webservice/.env
-            echo "DB_NAME=${DBName}" >> /home/ec2-user/webservice/.env
-            echo "S3_BUCKETNAME=${S3BUCKET}" >> /home/ec2-user/webservice/.env
-            systemctl restart gowebapp
+          DeviceIndex: "0"
+        BlockDeviceMappings:
+        - DeviceName: /dev/xvda
+          Ebs:
+            VolumeSize: 20
+            VolumeType: "gp2"
+            DeleteOnTermination: true
+        UserData:
+          Fn::Base64: 
+            !Sub |
+              #!/bin/bash
+              yum update -y
+              mkdir -p /home/ec2-user/webservice
+              echo "DB_PORT=${RDSDBInstance.Endpoint.Port}" >| /home/ec2-user/webservice/.env
+              echo "DB_USER=${DBName}" >> /home/ec2-user/webservice/.env
+              echo "DB_PASS=${DBPassword}" >> /home/ec2-user/webservice/.env
+              echo "DB_HOST=${RDSDBInstance.Endpoint.Address}" >> /home/ec2-user/webservice/.env
+              echo "DB_NAME=${DBName}" >> /home/ec2-user/webservice/.env
+              echo "S3_BUCKETNAME=${S3BUCKET}" >> /home/ec2-user/webservice/.env
+              systemctl restart gowebapp
+
+  ASGWebApp:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties:
+      AutoScalingGroupName: asg_launch_config
+      AvailabilityZones:
+        - !Ref AvailabilityZone1
+        - !Ref AvailabilityZone2
+        - !Ref AvailabilityZone3
+      Cooldown: '60'
+      DesiredCapacity: '1'
+      HealthCheckGracePeriod: 90
+      HealthCheckType: EC2
+      LaunchTemplate:
+        LaunchTemplateId: !Ref ASGLaunchTemplate
+        Version: !GetAtt ASGLaunchTemplate.LatestVersionNumber
+      MaxSize: '5'
+      MinSize: '1'
+      # NewInstancesProtectedFromScaleIn: true
+      Tags:
+        - Key: Application
+          Value: WebApp
+          PropagateAtLaunch: "true"
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-asg
+          PropagateAtLaunch: "true"
+      TargetGroupARNs:
+        - !Ref LoadBalancerTargetGroup
+      VPCZoneIdentifier:
+        - !Ref Subnet1
+        - !Ref Subnet2
+        - !Ref Subnet3
+
+  ASGCPUScaleOutPolicy:
+    Type: AWS::AutoScaling::ScalingPolicy
+    Properties:
+      AutoScalingGroupName: !Ref ASGWebApp
+      PolicyType: TargetTrackingScaling
+      TargetTrackingConfiguration:
+        PredefinedMetricSpecification:
+          PredefinedMetricType: ASGAverageCPUUtilization
+        TargetValue: 5.0
+
+  # ASGCPUScaleInPolicy:
+  #   Type: AWS::AutoScaling::ScalingPolicy
+  #   Properties:
+  #     AutoScalingGroupName: !Ref ASGWebApp
+  #     PolicyType: TargetTrackingScaling
+  #     TargetTrackingConfiguration:
+  #       PredefinedMetricSpecification:
+  #         PredefinedMetricType: ASGAverageCPUUtilization
+  #       TargetValue: 3.0
+
+  LoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    DependsOn: InternetGateway
+    Properties:
+      IpAddressType: ipv4
+      LoadBalancerAttributes:
+        - Key: idle_timeout.timeout_seconds
+          Value: '60'
+      Name: !Sub ${AWS::StackName}-load-balancer
+      Scheme: internet-facing
+      SecurityGroups:
+        - !Ref LBSecurityGroup
+      Subnets:
+        - !Ref Subnet1
+        - !Ref Subnet2
+        - !Ref Subnet3
+      Tags:
+        - Key: Application
+          Value: WebApp
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-load-balancer
+      Type: application
+
+  LoadBalancerTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      HealthCheckIntervalSeconds: 90
+      HealthCheckPath: '/healthz'
+      HealthCheckPort: '8080'
+      HealthCheckProtocol: 'HTTP'
+      HealthCheckTimeoutSeconds: 60
+      HealthyThresholdCount: 2
+      IpAddressType: ipv4
+      Name: !Sub ${AWS::StackName}-lb-tg
+      Port: 8080
+      Protocol: 'HTTP'
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-lb-tg
+      TargetGroupAttributes:
+        - Key: deregistration_delay.timeout_seconds
+          Value: '20'
+      TargetType: instance
+      UnhealthyThresholdCount: 2
+      VpcId: !Ref VPC
+  
+  LoadBalancerListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref LoadBalancerTargetGroup
+      LoadBalancerArn: !Ref LoadBalancer
+      Port: 80
+      Protocol: HTTP
+
+  DNSRecord:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneName: !Sub ${Environment}.olasunkanmi-olayinka.me.
+      Comment: DNS name for my application load balancer
+      Name: !Sub ${Environment}.olasunkanmi-olayinka.me.
+      Type: A
+      AliasTarget:
+        DNSName: !GetAtt LoadBalancer.DNSName
+        HostedZoneId: !GetAtt LoadBalancer.CanonicalHostedZoneID
+
+  # EC2Instance: 
+  #   Type: AWS::EC2::Instance
+  #   Properties: 
+  #     ImageId: !Ref AmiId
+  #     InstanceType: t2.micro
+  #     IamInstanceProfile: !Ref EC2InstanceProfile
+  #     NetworkInterfaces: 
+  #     - AssociatePublicIpAddress: "true"
+  #       DeleteOnTermination: "true"
+  #       SubnetId:
+  #         Ref: Subnet1
+  #       DeviceIndex: "0"
+  #       GroupSet: [!Ref EC2SecurityGroup]
+  #     BlockDeviceMappings: 
+  #     - DeviceName: "/dev/xvda"
+  #       Ebs: 
+  #         VolumeType: "gp2"
+  #         DeleteOnTermination: "true"
+  #         VolumeSize: "20"
+  #     UserData:
+  #       Fn::Base64: 
+  #         !Sub |
+  #           #!/bin/bash
+  #           yum update -y
+  #           mkdir -p /home/ec2-user/webservice
+  #           echo "DB_PORT=${RDSDBInstance.Endpoint.Port}" >| /home/ec2-user/webservice/.env
+  #           echo "DB_USER=${DBName}" >> /home/ec2-user/webservice/.env
+  #           echo "DB_PASS=${DBPassword}" >> /home/ec2-user/webservice/.env
+  #           echo "DB_HOST=${RDSDBInstance.Endpoint.Address}" >> /home/ec2-user/webservice/.env
+  #           echo "DB_NAME=${DBName}" >> /home/ec2-user/webservice/.env
+  #           echo "S3_BUCKETNAME=${S3BUCKET}" >> /home/ec2-user/webservice/.env
+  #           systemctl restart gowebapp
   S3BUCKET:
     Type: AWS::S3::Bucket
     DeletionPolicy: Delete
@@ -414,6 +583,3 @@ Outputs:
   EC2SecurityGroupId:
     Description: The application security group ID
     Value: !Ref EC2SecurityGroup
-  EC2InstanceId:
-    Description: The ec2 instance ID
-    Value: !Ref EC2Instance
