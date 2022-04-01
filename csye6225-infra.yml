@@ -310,7 +310,7 @@ Resources:
         - !Ref AvailabilityZone1
         - !Ref AvailabilityZone2
         - !Ref AvailabilityZone3
-      Cooldown: '60'
+      Cooldown: '120'
       DesiredCapacity: '1'
       HealthCheckGracePeriod: 90
       HealthCheckType: EC2
@@ -319,7 +319,6 @@ Resources:
         Version: !GetAtt ASGLaunchTemplate.LatestVersionNumber
       MaxSize: '5'
       MinSize: '1'
-      # NewInstancesProtectedFromScaleIn: true
       Tags:
         - Key: Application
           Value: WebApp
@@ -333,27 +332,50 @@ Resources:
         - !Ref Subnet1
         - !Ref Subnet2
         - !Ref Subnet3
-
   ASGCPUScaleOutPolicy:
     Type: AWS::AutoScaling::ScalingPolicy
     Properties:
       AutoScalingGroupName: !Ref ASGWebApp
-      PolicyType: TargetTrackingScaling
-      TargetTrackingConfiguration:
-        PredefinedMetricSpecification:
-          PredefinedMetricType: ASGAverageCPUUtilization
-        TargetValue: 3.0
-
-  # ASGCPUScaleInPolicy:
-  #   Type: AWS::AutoScaling::ScalingPolicy
-  #   Properties:
-  #     AutoScalingGroupName: !Ref ASGWebApp
-  #     PolicyType: TargetTrackingScaling
-  #     TargetTrackingConfiguration:
-  #       PredefinedMetricSpecification:
-  #         PredefinedMetricType: ASGAverageCPUUtilization
-  #       TargetValue: 3.0
-
+      AdjustmentType: "ChangeInCapacity"
+      Cooldown: "120"
+      ScalingAdjustment: 1
+  ASGCPUScaleInPolicy:
+    Type: AWS::AutoScaling::ScalingPolicy
+    Properties:
+      AutoScalingGroupName: !Ref ASGWebApp
+      AdjustmentType: "ChangeInCapacity"
+      Cooldown: "120"
+      ScalingAdjustment: -1
+  CPUAlarmHigh:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: Scale-up if CPU > 1% for 30 Seconds
+      MetricName: CPUUtilization
+      Namespace: AWS/EC2
+      Statistic: Average
+      Period: 60
+      EvaluationPeriods: 1
+      Threshold: 5.0
+      AlarmActions: [!Ref ASGCPUScaleOutPolicy]
+      Dimensions:
+      - Name: AutoScalingGroupName
+        Value: !Ref ASGWebApp
+      ComparisonOperator: GreaterThanThreshold
+  CPUAlarmLow:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: Scale-down if CPU < 0.5% for 30 Seconds
+      MetricName: CPUUtilization
+      Namespace: AWS/EC2
+      Statistic: Average
+      Period: 60
+      EvaluationPeriods: 1
+      Threshold: 3.0
+      AlarmActions: [!Ref ASGCPUScaleInPolicy]
+      Dimensions:
+      - Name: AutoScalingGroupName
+        Value: !Ref ASGWebApp
+      ComparisonOperator: LessThanThreshold
   LoadBalancer:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
     DependsOn: InternetGateway
@@ -577,3 +599,13 @@ Outputs:
   #           echo "DB_NAME=${DBName}" >> /home/ec2-user/webservice/.env
   #           echo "S3_BUCKETNAME=${S3BUCKET}" >> /home/ec2-user/webservice/.env
   #           systemctl restart gowebapp
+
+  # ASGCPUScaleOutPolicy:
+  #   Type: AWS::AutoScaling::ScalingPolicy
+  #   Properties:
+  #     AutoScalingGroupName: !Ref ASGWebApp
+  #     PolicyType: TargetTrackingScaling
+  #     TargetTrackingConfiguration:
+  #       PredefinedMetricSpecification:
+  #         PredefinedMetricType: ASGAverageCPUUtilization
+  #       TargetValue: 3.0
