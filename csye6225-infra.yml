@@ -349,7 +349,7 @@ Resources:
   CPUAlarmHigh:
     Type: AWS::CloudWatch::Alarm
     Properties:
-      AlarmDescription: Scale-up if CPU > 1% for 30 Seconds
+      AlarmDescription: Scale-up if CPU > 5% for 60 Seconds
       MetricName: CPUUtilization
       Namespace: AWS/EC2
       Statistic: Average
@@ -364,7 +364,7 @@ Resources:
   CPUAlarmLow:
     Type: AWS::CloudWatch::Alarm
     Properties:
-      AlarmDescription: Scale-down if CPU < 0.5% for 30 Seconds
+      AlarmDescription: Scale-down if CPU < 3% for 60 Seconds
       MetricName: CPUUtilization
       Namespace: AWS/EC2
       Statistic: Average
