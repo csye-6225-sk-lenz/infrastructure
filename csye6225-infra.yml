@@ -37,8 +37,7 @@ Parameters:
     Default: "0.0.0.0/0"
   AmiId:
     Type: String
-    # Default: "ami-033b95fb8079dc481"
-    Default: "ami-0288217a58a0f17c2"
+    Default: "ami-033b95fb8079dc481"
   Environment:
     Type: String
     Default: "dev"
