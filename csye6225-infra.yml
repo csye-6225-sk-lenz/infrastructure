@@ -38,7 +38,7 @@ Parameters:
   AmiId:
     Type: String
     # Default: "ami-033b95fb8079dc481"
-    Default: "ami-0288217a58a0f17c2"
+    Default: "ami-059ecc71900ba3080"
   Environment:
     Type: String
     Default: "dev"
@@ -51,6 +51,10 @@ Parameters:
   InstanceKeyName:
     Type: String
     Default: "csye6225"
+  CodeDeployBucketS3BUCKET:
+    Description: CodeDeploy S3 Bucket Name
+    Type: String
+    Default: codedeploy.dev.olasunkanmi-olayinka.me
   
 Resources:
   VPC:
@@ -349,7 +353,7 @@ Resources:
   CPUAlarmHigh:
     Type: AWS::CloudWatch::Alarm
     Properties:
-      AlarmDescription: Scale-up if CPU > 1% for 30 Seconds
+      AlarmDescription: Scale-up if CPU > 5% for 60 Seconds
       MetricName: CPUUtilization
       Namespace: AWS/EC2
       Statistic: Average
@@ -364,7 +368,7 @@ Resources:
   CPUAlarmLow:
     Type: AWS::CloudWatch::Alarm
     Properties:
-      AlarmDescription: Scale-down if CPU < 0.5% for 30 Seconds
+      AlarmDescription: Scale-down if CPU < 3% for 60 Seconds
       MetricName: CPUUtilization
       Namespace: AWS/EC2
       Statistic: Average
@@ -520,12 +524,20 @@ Resources:
             Resource:
             - !Sub "arn:aws:s3:::${S3BUCKET}"
             - !Sub "arn:aws:s3:::${S3BUCKET}/*"
+          - Effect: Allow
+            Action:
+            - "s3:GetObject"
+            Resource:
+            - !Sub "arn:aws:s3:::${CodeDeployBucketS3BUCKET}"
+            - !Sub "arn:aws:s3:::${CodeDeployBucketS3BUCKET}/*"
       Roles:
       - !Ref EC2S3IAMRole
   EC2S3IAMRole:
     Type: AWS::IAM::Role
     Properties:
       RoleName: "EC2-CSYE6225"
+      ManagedPolicyArns: 
+      - "arn:aws:iam::aws:policy/CloudWatchAgentAdminPolicy"
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -543,6 +555,51 @@ Resources:
       Path: /
       Roles: 
       - !Ref EC2S3IAMRole
+  CodeDeployEC2ServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: CodeDeployEC2ServiceRole
+      Description: CodeDeployEC2ServiceRole
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - codedeploy.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Path: /
+      ManagedPolicyArns:
+        - "arn:aws:iam::aws:policy/service-role/AWSCodeDeployRole"
+  CSYE6225Webapp:
+    Type: AWS::CodeDeploy::Application
+    Properties:
+      ApplicationName: mywebapp
+      ComputePlatform: Server
+  csye6225WebappDeployment:
+    Type: AWS::CodeDeploy::DeploymentGroup
+    DependsOn:
+    - ASGWebApp
+    Properties:
+      ApplicationName: mywebapp
+      DeploymentGroupName: mywebapp
+      ServiceRoleArn: !GetAtt CodeDeployEC2ServiceRole.Arn
+      AutoScalingGroups:
+      - asg_launch_config
+      DeploymentStyle:
+        DeploymentOption: WITHOUT_TRAFFIC_CONTROL
+        DeploymentType: IN_PLACE
+      Ec2TagSet:
+        Ec2TagSetList:
+        - Ec2TagGroup:
+          - Key: Application
+            Value: WebApp
+            Type: KEY_AND_VALUE
+      AutoRollbackConfiguration:
+        Enabled: true
+        Events:
+          - DEPLOYMENT_FAILURE
 
 Outputs:
   VpcId:
