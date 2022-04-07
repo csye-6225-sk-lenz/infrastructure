@@ -4,11 +4,11 @@ Parameters:
   CodeDeployBucketS3BUCKET:
     Description: CodeDeploy S3 Bucket Name
     Type: String
-    Default: codedeploy.dev.olasunkanmi-olayinka.me
+    Default: codedeploy.url.something
   AWSAccoutID:
     Description: AWS Account ID
     Type: String
-    Default: 175550619217
+    Default: 123456789
 
 Resources:
   GHUploadToS3Policy:

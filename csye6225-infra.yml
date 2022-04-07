@@ -37,8 +37,7 @@ Parameters:
     Default: "0.0.0.0/0"
   AmiId:
     Type: String
-    # Default: "ami-033b95fb8079dc481"
-    Default: "ami-059ecc71900ba3080"
+    Default: "ami-033b95fb8079dc481"
   Environment:
     Type: String
     Default: "dev"
@@ -54,7 +53,7 @@ Parameters:
   CodeDeployBucketS3BUCKET:
     Description: CodeDeploy S3 Bucket Name
     Type: String
-    Default: codedeploy.dev.olasunkanmi-olayinka.me
+    Default: codedeploy.url.something
   
 Resources:
   VPC:
@@ -577,7 +576,7 @@ Resources:
     Properties:
       ApplicationName: mywebapp
       ComputePlatform: Server
-  csye6225WebappDeployment:
+  CSYE6225WebappDeployment:
     Type: AWS::CodeDeploy::DeploymentGroup
     DependsOn:
     - ASGWebApp
