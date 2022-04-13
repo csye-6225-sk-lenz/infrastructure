@@ -336,15 +336,6 @@ Resources:
         - !Ref Subnet1
         - !Ref Subnet2
         - !Ref Subnet3
-      LifecycleHookSpecificationList:
-        - LifecycleTransition: "autoscaling:EC2_INSTANCE_LAUNCHING"
-          LifecycleHookName: "myLaunchLifecycleHook"
-          DefaultResult: "CONTINUE"
-          HeartbeatTimeout: 500
-        - LifecycleTransition: "autoscaling:EC2_INSTANCE_TERMINATING"
-          LifecycleHookName: "myTerminationLifecycleHook"
-          DefaultResult: "CONTINUE"
-          HeartbeatTimeout: 300
   ASGCPUScaleOutPolicy:
     Type: AWS::AutoScaling::ScalingPolicy
     Properties:
