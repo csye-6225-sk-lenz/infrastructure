@@ -305,6 +305,7 @@ Resources:
               echo "DB_NAME=${DBName}" >> /home/ec2-user/webservice/.env
               echo "S3_BUCKETNAME=${S3BUCKET}" >> /home/ec2-user/webservice/.env
               systemctl restart gowebapp
+              /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a fetch-config -m ec2 -c file:/opt/cloudwatch-config.json -s
   ASGWebApp:
     Type: AWS::AutoScaling::AutoScalingGroup
     Properties:
@@ -335,6 +336,15 @@ Resources:
         - !Ref Subnet1
         - !Ref Subnet2
         - !Ref Subnet3
+      LifecycleHookSpecificationList:
+        - LifecycleTransition: "autoscaling:EC2_INSTANCE_LAUNCHING"
+          LifecycleHookName: "myLaunchLifecycleHook"
+          DefaultResult: "CONTINUE"
+          HeartbeatTimeout: 500
+        - LifecycleTransition: "autoscaling:EC2_INSTANCE_TERMINATING"
+          LifecycleHookName: "myTerminationLifecycleHook"
+          DefaultResult: "CONTINUE"
+          HeartbeatTimeout: 300
   ASGCPUScaleOutPolicy:
     Type: AWS::AutoScaling::ScalingPolicy
     Properties:
@@ -358,7 +368,7 @@ Resources:
       Statistic: Average
       Period: 60
       EvaluationPeriods: 1
-      Threshold: 5.0
+      Threshold: 2.5
       AlarmActions: [!Ref ASGCPUScaleOutPolicy]
       Dimensions:
       - Name: AutoScalingGroupName
@@ -373,7 +383,7 @@ Resources:
       Statistic: Average
       Period: 60
       EvaluationPeriods: 1
-      Threshold: 3.0
+      Threshold: 1.0
       AlarmActions: [!Ref ASGCPUScaleInPolicy]
       Dimensions:
       - Name: AutoScalingGroupName
