@@ -6,9 +6,12 @@ import (
 )
 
 func main() {
-	go makeRequest("http://dev.olasunkanmi-olayinka.me/healthz")
-	go makeRequest("http://dev.olasunkanmi-olayinka.me/healthz")
-	makeRequest("http://dev.olasunkanmi-olayinka.me/healthz")
+	go makeRequest("http://prod.olasunkanmi-olayinka.me/healthtest3")
+	go makeRequest("http://first@xampe.com:12345@prod.olasunkanmi-olayinka.me/v1/user/self")
+	go makeRequest("http://prod.olasunkanmi-olayinka.me/healthz")
+	go makeRequest("http://prod.olasunkanmi-olayinka.me/healthtest3")
+	go makeRequest("http://first@xampe.com:12345@prod.olasunkanmi-olayinka.me/v1/user/self")
+	makeRequest("http://prod.olasunkanmi-olayinka.me/healthz")
 }
 
 func makeRequest(url string) {
