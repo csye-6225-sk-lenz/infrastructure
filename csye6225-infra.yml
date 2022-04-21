@@ -303,7 +303,7 @@ Resources:
               echo "DB_PASS=${DBPassword}" >> /home/ec2-user/webservice/.env
               echo "DB_HOST=${RDSDBInstance.Endpoint.Address}" >> /home/ec2-user/webservice/.env
               echo "DB_NAME=${DBName}" >> /home/ec2-user/webservice/.env
-              echo "DYNAMODB_TABLE=EmailVerificationTokenTTL" /home/ec2-user/webservice/.env
+              echo "DYNAMODB_TABLE=EmailVerificationTokenTTL" >> /home/ec2-user/webservice/.env
               echo "S3_BUCKETNAME=${S3BUCKET}" >> /home/ec2-user/webservice/.env
               systemctl restart gowebapp
               /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a fetch-config -m ec2 -c file:/opt/cloudwatch-config.json -s
@@ -539,6 +539,7 @@ Resources:
       RoleName: "EC2-CSYE6225"
       ManagedPolicyArns: 
       - "arn:aws:iam::aws:policy/CloudWatchAgentAdminPolicy"
+      - "arn:aws:iam::aws:policy/AmazonDynamoDBFullAccess"
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:
