@@ -9,10 +9,6 @@ Parameters:
     Description: AWS Lamba S3 Bucket Name
     Type: String
     Default: lambda.url.something
-  AWSAccoutID:
-    Description: AWS Account ID
-    Type: String
-    Default: 123456789
 
 Resources:
   GHUploadToS3Policy:
@@ -46,7 +42,7 @@ Resources:
           - "codedeploy:RegisterApplicationRevision"
           - "codedeploy:GetApplicationRevision"
           Resource:
-          - !Sub "arn:aws:codedeploy:us-east-1:${AWSAccoutID}:mywebapp"
+          - !Sub "arn:aws:codedeploy:us-east-1:${AWS::AccountId}:mywebapp"
         - Effect: Allow
           Action:
           - "codedeploy:CreateDeployment"
@@ -57,9 +53,9 @@ Resources:
           Action:
           - "codedeploy:GetDeploymentConfig"
           Resource:
-          - !Sub "arn:aws:codedeploy:us-east-1:${AWSAccoutID}:deploymentconfig:CodeDeployDefault.OneAtATime"
-          - !Sub "arn:aws:codedeploy:us-east-1:${AWSAccoutID}:deploymentconfig:CodeDeployDefault.HalfAtATime"
-          - !Sub "arn:aws:codedeploy:us-east-1:${AWSAccoutID}:deploymentconfig:CodeDeployDefault.AllAtOnce"
+          - !Sub "arn:aws:codedeploy:us-east-1:${AWS::AccountId}:deploymentconfig:CodeDeployDefault.OneAtATime"
+          - !Sub "arn:aws:codedeploy:us-east-1:${AWS::AccountId}:deploymentconfig:CodeDeployDefault.HalfAtATime"
+          - !Sub "arn:aws:codedeploy:us-east-1:${AWS::AccountId}:deploymentconfig:CodeDeployDefault.AllAtOnce"
       Users:
       - ghactions-app
   GHEC2Ami:
