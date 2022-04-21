@@ -655,7 +655,7 @@ Resources:
       MemorySize: 128
       PackageType: Zip
       Role: !GetAtt LambdaExecutionRole.Arn
-      Runtime: python3.9
+      Runtime: python3.8
       Timeout: 15
       
 Outputs:
