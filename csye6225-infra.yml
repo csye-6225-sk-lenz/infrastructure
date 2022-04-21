@@ -633,6 +633,8 @@ Resources:
       RoleName: lambda-execution-role
       ManagedPolicyArns:
         - "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+        - "arn:aws:iam::aws:policy/AmazonDynamoDBFullAccess"
+        - "arn:aws:iam::aws:policy/AmazonSESFullAccess"
   LambdaFunction:
     Type: AWS::Lambda::Function
     DependsOn:
@@ -644,6 +646,9 @@ Resources:
             message = 'Hello Lambda World!'
             return message
       Description: Lambda function for verification emails
+      Environment:
+        Variables:
+          DomainName: !Sub '${Environment}.olasunkanmi-olayinka.me'
       FunctionName: EmailVerification
       Handler: index.my_handler
       MemorySize: 128
