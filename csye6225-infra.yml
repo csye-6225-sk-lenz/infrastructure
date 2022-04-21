@@ -610,6 +610,26 @@ Resources:
         - Endpoint: !GetAtt LambdaFunction.Arn
           Protocol: lambda
       TopicName: EmailVerificationTopic
+  SNSPolicy:
+    Type: AWS::IAM::Policy
+    DependsOn:
+      - MySNSTopic
+    Properties:
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - "sns:ListTopics"
+              - "sns:CreateTopic"
+              - "sns:GetTopicAttributes"
+              - "sns:Publish"
+              - "sns:ConfirmSubscription"
+            Resource:
+              - !Ref MySNSTopic
+      PolicyName: "SNSPolicy"
+      Roles:
+      - !Ref EC2S3IAMRole
   LambdaSNSPermission:
     Type: AWS::Lambda::Permission
     Properties: 
