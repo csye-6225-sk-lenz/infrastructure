@@ -714,7 +714,7 @@ Resources:
               print("message_type: ", msg_type)
 
               SUBJECT = "Verify your email address!!!"
-              DOMAIN_NAME = os.environ.get('DOMAIN_NAME')
+              DOMAIN_NAME = os.environ.get('DomainName')
               SENDER = f'notification@{DOMAIN_NAME}'
               CHARSET = "UTF-8"
               BODY_HTML = f"""<html>
