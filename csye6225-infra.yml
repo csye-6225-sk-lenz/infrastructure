@@ -50,7 +50,7 @@ Parameters:
   InstanceKeyName:
     Type: String
     Default: "csye6225"
-  CodeDeployBucketS3BUCKET:
+  CodeDeployS3BUCKET:
     Description: CodeDeploy S3 Bucket Name
     Type: String
     Default: codedeploy.url.something
@@ -303,6 +303,7 @@ Resources:
               echo "DB_PASS=${DBPassword}" >> /home/ec2-user/webservice/.env
               echo "DB_HOST=${RDSDBInstance.Endpoint.Address}" >> /home/ec2-user/webservice/.env
               echo "DB_NAME=${DBName}" >> /home/ec2-user/webservice/.env
+              echo "DYNAMODB_TABLE=EmailVerificationTokenTTL" /home/ec2-user/webservice/.env
               echo "S3_BUCKETNAME=${S3BUCKET}" >> /home/ec2-user/webservice/.env
               systemctl restart gowebapp
               /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a fetch-config -m ec2 -c file:/opt/cloudwatch-config.json -s
@@ -498,7 +499,7 @@ Resources:
           DBParameterGroupName: !Ref RDSDBParameterGroup
           Engine: MySQL
           EngineVersion: 8.0.27
-          DBInstanceClass: db.t3.micro
+          DBInstanceClass: db.t2.micro
           AllocatedStorage: "20"
           StorageType: "gp2"
           MultiAZ: "false"
@@ -528,8 +529,8 @@ Resources:
             Action:
             - "s3:GetObject"
             Resource:
-            - !Sub "arn:aws:s3:::${CodeDeployBucketS3BUCKET}"
-            - !Sub "arn:aws:s3:::${CodeDeployBucketS3BUCKET}/*"
+            - !Sub "arn:aws:s3:::${CodeDeployS3BUCKET}"
+            - !Sub "arn:aws:s3:::${CodeDeployS3BUCKET}/*"
       Roles:
       - !Ref EC2S3IAMRole
   EC2S3IAMRole:
@@ -600,7 +601,57 @@ Resources:
         Enabled: true
         Events:
           - DEPLOYMENT_FAILURE
-
+  MySNSTopic:
+    Type: AWS::SNS::Topic
+    Properties: 
+      DisplayName: EmailVerificationTopic
+      Subscription: 
+        - Endpoint: !GetAtt LambdaFunction.Arn
+          Protocol: lambda
+      TopicName: EmailVerificationTopic
+  LambdaSNSPermission:
+    Type: AWS::Lambda::Permission
+    Properties: 
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt LambdaFunction.Arn
+      Principal: sns.amazonaws.com
+      SourceAccount: !Ref 'AWS::AccountId'
+      SourceArn: !Ref MySNSTopic
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Path: /
+      RoleName: lambda-execution-role
+      ManagedPolicyArns:
+        - "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+  LambdaFunction:
+    Type: AWS::Lambda::Function
+    DependsOn:
+      - LambdaExecutionRole
+    Properties:
+      Code:
+        ZipFile: |
+          def my_handler(event, context):
+            message = 'Hello Lambda World!'
+            return message
+      Description: Lambda function for verification emails
+      FunctionName: EmailVerification
+      Handler: index.my_handler
+      MemorySize: 128
+      PackageType: Zip
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Runtime: python3.9
+      Timeout: 15
+      
 Outputs:
   VpcId:
     Description: The VPC ID

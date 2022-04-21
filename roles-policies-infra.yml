@@ -1,10 +1,14 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Description: CSYE 6225 IaC Demo
 Parameters:
-  CodeDeployBucketS3BUCKET:
+  CodeDeployS3BUCKET:
     Description: CodeDeploy S3 Bucket Name
     Type: String
     Default: codedeploy.url.something
+  LambdaS3BUCKET:
+    Description: AWS Lamba S3 Bucket Name
+    Type: String
+    Default: lambda.url.something
   AWSAccoutID:
     Description: AWS Account ID
     Type: String
@@ -24,8 +28,10 @@ Resources:
             - 's3:Get*'
             - 's3:List*'
             Resource:
-            - !Sub "arn:aws:s3:::${CodeDeployBucketS3BUCKET}"
-            - !Sub "arn:aws:s3:::${CodeDeployBucketS3BUCKET}/*"
+            - !Sub "arn:aws:s3:::${CodeDeployS3BUCKET}"
+            - !Sub "arn:aws:s3:::${CodeDeployS3BUCKET}/*"
+            - !Sub "arn:aws:s3:::${LambdaS3BUCKET}"
+            - !Sub "arn:aws:s3:::${LambdaS3BUCKET}/*"
       Users:
       - ghactions-app
   GHCodeDeployPolicy:
