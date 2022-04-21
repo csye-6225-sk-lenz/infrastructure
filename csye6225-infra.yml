@@ -630,6 +630,40 @@ Resources:
       PolicyName: "SNSPolicy"
       Roles:
       - !Ref EC2S3IAMRole
+  TokenDynamoDB:
+    Type: AWS::DynamoDB::Table
+    Properties: 
+      AttributeDefinitions: 
+        - AttributeName: Email
+          AttributeType: S
+      KeySchema:
+        - AttributeName: Email
+          KeyType: HASH
+      BillingMode: PROVISIONED
+      ProvisionedThroughput:
+        ReadCapacityUnits: 1
+        WriteCapacityUnits: 1
+      TableName: EmailVerificationTokenTTL
+      TimeToLiveSpecification: 
+        AttributeName: TTL
+        Enabled: true
+  SentMailsDynamoDB:
+    Type: AWS::DynamoDB::Table
+    Properties: 
+      AttributeDefinitions: 
+        - AttributeName: Email
+          AttributeType: S
+      KeySchema:
+        - AttributeName: Email
+          KeyType: HASH
+      BillingMode: PROVISIONED
+      ProvisionedThroughput:
+        ReadCapacityUnits: 1
+        WriteCapacityUnits: 1
+      TableName: EmailVerificationSentMails
+      TimeToLiveSpecification: 
+        AttributeName: TTL
+        Enabled: true
   LambdaSNSPermission:
     Type: AWS::Lambda::Permission
     Properties: 
