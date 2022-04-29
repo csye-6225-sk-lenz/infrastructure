@@ -503,6 +503,8 @@ Resources:
     Properties:
       Description: MySQL Parameter Group
       Family: mysql8.0
+      Parameters: 
+        performance_schema: 1
   RDSDBInstance:
         Type: AWS::RDS::DBInstance
         Properties:
@@ -522,6 +524,7 @@ Resources:
           VPCSecurityGroups: [!Ref RDSSecurityGroup]
           StorageEncrypted: true
           KmsKeyId: !Ref RDSInstKey
+          DBParameterGroupName: !Ref RDSDBParameterGroup
   EC2S3Policy:
     Type: 'AWS::IAM::Policy'
     Properties:
