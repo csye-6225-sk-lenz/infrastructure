@@ -305,6 +305,7 @@ Resources:
               #!/bin/bash
               yum update -y
               mkdir -p /home/ec2-user/webservice
+              wget https://truststore.pki.rds.amazonaws.com/us-east-1/us-east-1-bundle.pem -O /home/ec2-user/us-east-1-bundle.pem
               echo "DB_PORT=${RDSDBInstance.Endpoint.Port}" >| /home/ec2-user/webservice/.env
               echo "DB_USER=${DBName}" >> /home/ec2-user/webservice/.env
               echo "DB_PASS=${DBPassword}" >> /home/ec2-user/webservice/.env
@@ -313,6 +314,7 @@ Resources:
               echo "ACCOUNT_ID=${AWS::AccountId}" >> /home/ec2-user/webservice/.env
               echo "DYNAMODB_TABLE=EmailVerificationTokenTTL" >> /home/ec2-user/webservice/.env
               echo "S3_BUCKETNAME=${S3BUCKET}" >> /home/ec2-user/webservice/.env
+              echo "ROOT_CERT=/home/ec2-user/us-east-1-bundle.pem" >> /home/ec2-user/webservice/.env
               systemctl restart gowebapp
               /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a fetch-config -m ec2 -c file:/opt/cloudwatch-config.json -s
   ASGWebApp:
