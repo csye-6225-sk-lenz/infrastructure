@@ -35,3 +35,10 @@ ParameterKey=AvailabilityZone3,ParameterValue="{availability-zone3-value}" \
 ParameterKey=PublicRouteCidrBlock,ParameterValue="{public-cidr-value}"
 ```
 7) To clean up and delete stack run <code>aws cloudformation delete-stack --stack-name {stack-name}</code>
+
+# SSL Certificate Upload
+```
+aws acm import-certificate --certificate fileb://Certificate.pem \
+    --certificate-chain fileb://CertificateChain.pem \
+    --private-key fileb://PrivateKey.pem 	
+```

@@ -54,7 +54,12 @@ Parameters:
     Description: CodeDeploy S3 Bucket Name
     Type: String
     Default: codedeploy.url.something
-  
+  MySSLCert:
+    Description: SSL Certificate ARN
+    Type: String
+    Default: arn:aws:acm:region:userId:certificate/certId
+
+
 Resources:
   VPC:
     Type: AWS::EC2::VPC
@@ -291,6 +296,8 @@ Resources:
           Ebs:
             VolumeSize: 8
             VolumeType: "gp2"
+            Encrypted: true
+            KmsKeyId: !GetAtt EBSVolKey.Arn
             DeleteOnTermination: true
         UserData:
           Fn::Base64: 
@@ -361,7 +368,7 @@ Resources:
       Statistic: Average
       Period: 60
       EvaluationPeriods: 1
-      Threshold: 2.5
+      Threshold: 5.0
       AlarmActions: [!Ref ASGCPUScaleOutPolicy]
       Dimensions:
       - Name: AutoScalingGroupName
@@ -376,7 +383,7 @@ Resources:
       Statistic: Average
       Period: 60
       EvaluationPeriods: 1
-      Threshold: 1.0
+      Threshold: 3.0
       AlarmActions: [!Ref ASGCPUScaleInPolicy]
       Dimensions:
       - Name: AutoScalingGroupName
@@ -433,8 +440,10 @@ Resources:
         - Type: forward
           TargetGroupArn: !Ref LoadBalancerTargetGroup
       LoadBalancerArn: !Ref LoadBalancer
-      Port: 80
-      Protocol: HTTP
+      Port: 443
+      Protocol: HTTPS
+      Certificates:
+      - CertificateArn: !Ref MySSLCert
   DNSRecord:
     Type: AWS::Route53::RecordSet
     Properties:
@@ -511,6 +520,8 @@ Resources:
           PubliclyAccessible: "false"
           DBName: !Ref DBName
           VPCSecurityGroups: [!Ref RDSSecurityGroup]
+          StorageEncrypted: true
+          KmsKeyId: !Ref RDSInstKey
   EC2S3Policy:
     Type: 'AWS::IAM::Policy'
     Properties:
@@ -702,6 +713,7 @@ Resources:
           import time
           import json
           import boto3
+          from urllib import parse
           from botocore.exceptions import ClientError
 
           def my_handler(event, context):
@@ -723,11 +735,11 @@ Resources:
                   <body>
                   <h1>Verify Your Email Address</h1>
                   <p>To continue, please verify your email address by clicking the link below. This link is valid for 5 minutes.</p>
-                  <p><a  href="http://{DOMAIN_NAME}/v1/verifyUserEmail?email={email}&token={token}" target="_blank">Click here to verify email</a></p>
+                  <p><a  href="https://{DOMAIN_NAME}/v1/verifyUserEmail?email={parse.quote(email)}&token={token}" target="_blank">Click here to verify email</a></p>
                   <p>Or paste the following link in a browser: </p>
-                  <p>http://{DOMAIN_NAME}/v1/verifyUserEmail?email={email}&token={token} </p>
+                  <p>https://{DOMAIN_NAME}/v1/verifyUserEmail?email={parse.quote(email)}&token={token} </p>
                   </body>
-                  </html>    
+                  </html>
               """
 
               dynamodb = boto3.resource('dynamodb')
@@ -795,6 +807,67 @@ Resources:
       Role: !GetAtt LambdaExecutionRole.Arn
       Runtime: python3.8
       Timeout: 15
+  EBSVolKey:
+    Type: AWS::KMS::Key
+    Properties: 
+      Description: Customer Managed Key for EBS Volume
+      Enabled: true
+      PendingWindowInDays: 7
+      KeyPolicy:
+        Version: '2012-10-17'
+        Id: ebs-key
+        Statement:
+        - Effect: Allow
+          Principal:
+            AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:root'
+          Action: 'kms:*'
+          Resource: '*'
+        - Effect: Allow
+          Principal:
+            AWS:
+            - !Sub arn:aws:iam::${AWS::AccountId}:role/aws-service-role/autoscaling.amazonaws.com/AWSServiceRoleForAutoScaling
+          Action:
+            - kms:Encrypt
+            - kms:Decrypt
+            - kms:ReEncrypt*
+            - kms:DescribeKey
+            - kms:GenerateDataKey*
+          Resource: '*'
+        - Effect: Allow
+          Principal:
+            AWS:
+            - !Sub arn:aws:iam::${AWS::AccountId}:role/aws-service-role/autoscaling.amazonaws.com/AWSServiceRoleForAutoScaling
+          Action:
+          - kms:CreateGrant
+          Resource: '*'
+          Condition:
+            Bool:
+              kms:GrantIsForAWSResource: true
+  EBSVolKeyAlias:
+    Type: AWS::KMS::Alias
+    Properties:
+      AliasName: alias/ebs-key
+      TargetKeyId: !Ref EBSVolKey
+  RDSInstKey:
+    Type: AWS::KMS::Key
+    Properties: 
+      Description: Customer Managed Key for RDS Instance
+      Enabled: true
+      KeyPolicy:
+        Version: '2012-10-17'
+        Id: rds-key
+        Statement:
+        - Effect: Allow
+          Principal:
+            AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:root'
+          Action: 'kms:*'
+          Resource: '*'
+  RDSInsKeyAlias:
+    Type: AWS::KMS::Alias
+    Properties:
+      AliasName: alias/rds-key
+      TargetKeyId: !Ref RDSInstKey
+
       
 Outputs:
   VpcId:
