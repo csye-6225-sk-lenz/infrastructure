@@ -520,6 +520,8 @@ Resources:
           PubliclyAccessible: "false"
           DBName: !Ref DBName
           VPCSecurityGroups: [!Ref RDSSecurityGroup]
+          StorageEncrypted: true
+          KmsKeyId: !Ref RDSInstKey
   EC2S3Policy:
     Type: 'AWS::IAM::Policy'
     Properties:
@@ -846,6 +848,26 @@ Resources:
     Properties:
       AliasName: alias/ebs-key
       TargetKeyId: !Ref EBSVolKey
+  RDSInstKey:
+    Type: AWS::KMS::Key
+    Properties: 
+      Description: Customer Managed Key for RDS Instance
+      Enabled: true
+      KeyPolicy:
+        Version: '2012-10-17'
+        Id: rds-key
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:root'
+            Action: 'kms:*'
+            Resource: '*'
+  RDSInsKeyAlias:
+    Type: AWS::KMS::Alias
+    Properties:
+      AliasName: alias/rds-key
+      TargetKeyId: !Ref RDSInstKey
+
 
       
 Outputs:
