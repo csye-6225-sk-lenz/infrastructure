@@ -857,11 +857,11 @@ Resources:
         Version: '2012-10-17'
         Id: rds-key
         Statement:
-          - Effect: Allow
-            Principal:
-              AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:root'
-            Action: 'kms:*'
-            Resource: '*'
+        - Effect: Allow
+          Principal:
+            AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:root'
+          Action: 'kms:*'
+          Resource: '*'
   RDSInsKeyAlias:
     Type: AWS::KMS::Alias
     Properties:
